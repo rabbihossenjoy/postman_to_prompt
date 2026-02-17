@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Postman API Explorer</title>
+    <meta name="description" content="Browse Postman collections and generate API integration summaries">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Audio Elements for Sound Effects -->
+    <audio id="clickSound" preload="auto">
+        <source
+            src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVKzn77BfGQc+ltryxnMnBSuAzvLaiTcIF2m98OScTgwOUKnk8LNiHAU5kdXzzn0sBS1+zPDdkUAKFF+16OyqVhQKR6Hh8r1uIgU0iNHz1IU0Bh9vwvDjmlINDlSs5++wXxkHPpbZ8sZzJwUrgM7y2ok3CBdpvfDknE4MDlCp5PCzYhwFOZHV885+LAUtfsrw3ZFACQ=="
+            type="audio/wav">
+    </audio>
+    <audio id="successSound" preload="auto">
+        <source
+            src="data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU4AAACAP4CfwL/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4N/g3+Df4A=="
+            type="audio/wav">
+    </audio>
+
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="screen active">
+            <div class="login-container">
+                <div class="logo-section">
+                    <div class="logo-icon">🚀</div>
+                    <h1 class="app-title">Postman API Explorer</h1>
+                    <p class="app-subtitle">Generate beautiful API documentation from your collections</p>
+                </div>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="apiKey">Postman API Key</label>
+                        <input type="password" id="apiKey" placeholder="Enter your Postman API key" autocomplete="off">
+                        <small class="input-hint">Get your API key from <a
+                                href="https://web.postman.co/settings/me/api-keys" target="_blank">Postman
+                                Settings</a></small>
+                    </div>
+                    <button id="loginBtn" class="btn btn-primary">
+                        <span class="btn-text">Connect to Postman</span>
+                        <span class="btn-loader"></span>
+                    </button>
+                    <div id="loginError" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="mainScreen" class="screen">
+            <header class="app-header">
+                <div class="header-left">
+                    <div class="logo-icon-small">🚀</div>
+                    <h2>Postman Explorer</h2>
+                </div>
+                <div class="header-right">
+                    <button id="soundToggle" class="btn-icon" title="Toggle sound">
+                        <span id="soundIcon">🔊</span>
+                    </button>
+                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="content-wrapper">
+                    <!-- Collections Section -->
+                    <section class="collections-section">
+                        <div class="section-header">
+                            <h3>Your Collections</h3>
+                            <div class="selection-info">
+                                <span id="selectionCount">0 endpoints selected</span>
+                                <button id="clearSelectionBtn" class="btn btn-text" style="display: none;">Clear
+                                    All</button>
+                            </div>
+                        </div>
+                        <div class="search-container">
+                            <input type="text" id="searchInput" class="search-input"
+                                placeholder="🔍 Search collections...">
+                        </div>
+                        <div id="collectionsContainer" class="collections-grid">
+                            <!-- Loading skeleton -->
+                            <div class="skeleton-card"></div>
+                            <div class="skeleton-card"></div>
+                            <div class="skeleton-card"></div>
+                        </div>
+                    </section>
+
+                    <!-- Collection Detail Section -->
+                    <section id="collectionDetailSection" class="collection-detail-section" style="display: none;">
+                        <div class="detail-header">
+                            <button id="backToCollectionsBtn" class="btn btn-secondary">
+                                <span>← Back to Collections</span>
+                            </button>
+                            <div class="detail-title">
+                                <h3 id="detailCollectionName"></h3>
+                                <p id="detailCollectionDesc"></p>
+                            </div>
+                        </div>
+                        <div id="folderTreeContainer" class="folder-tree-container">
+                            <!-- Folder tree will be rendered here -->
+                        </div>
+                    </section>
+
+                    <!-- Summary Section -->
+                    <section id="summarySection" class="summary-section" style="display: none;">
+                        <div class="section-header">
+                            <h3>Generated Summary</h3>
+                            <div class="summary-actions">
+                                <button id="copyBtn" class="btn btn-primary">
+                                    <span>📋 Copy to Clipboard</span>
+                                </button>
+                                <button id="downloadBtn" class="btn btn-secondary">
+                                    <span>💾 Download</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="summaryContent" class="summary-content"></div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
