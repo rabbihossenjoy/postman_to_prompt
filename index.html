@@ -110,17 +110,22 @@
 
                     <!-- Summary Section -->
                     <section id="summarySection" class="summary-section" style="display: none;">
-                        <div class="section-header">
-                            <h3>Generated Summary</h3>
-                            <div class="summary-actions">
-                                <button id="expandAllBtn" class="btn btn-text">
+                        <div class="summary-toolbar">
+                            <div class="toolbar-left">
+                                <div class="toolbar-stats">
+                                    <span class="stat-pill" id="summaryEndpointCount">0</span>
+                                    <span>Endpoints Generated</span>
+                                </div>
+                            </div>
+                            <div class="toolbar-right">
+                                <button id="expandAllBtn" class="btn btn-secondary">
                                     <span>📂 Expand All</span>
                                 </button>
-                                <button id="collapseAllBtn" class="btn btn-text">
+                                <button id="collapseAllBtn" class="btn btn-secondary">
                                     <span>📁 Collapse All</span>
                                 </button>
                                 <button id="copyBtn" class="btn btn-primary">
-                                    <span>📋 Copy to Clipboard</span>
+                                    <span>📋 Copy All</span>
                                 </button>
                                 <button id="downloadBtn" class="btn btn-secondary">
                                     <span>💾 Download</span>

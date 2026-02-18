@@ -487,6 +487,11 @@ function generateSummary() {
     }
     
     summarySection.style.display = 'block';
+    
+    // Update stats
+    const countEl = document.getElementById('summaryEndpointCount');
+    if (countEl) countEl.textContent = state.selectedEndpoints.size;
+    
     summaryContent.innerHTML = '';
     
     state.selectedEndpoints.forEach((endpoint, key) => {
@@ -497,47 +502,39 @@ function generateSummary() {
 
 function createCollapsibleEndpointSummary(endpoint) {
     const details = document.createElement('details');
-    details.className = 'summary-item-details';
-    details.open = true; // Open by default
+    details.className = 'summary-item-card';
+    details.open = true;
     
     const summary = document.createElement('summary');
-    summary.className = 'summary-item-header';
+    summary.className = 'card-header';
     
     const methodClass = `method-${endpoint.method.toLowerCase()}`;
     summary.innerHTML = `
-        <div class="summary-header-content">
-            <span class="summary-method ${methodClass}">${endpoint.method}</span>
-            <span class="summary-url">${endpoint.url}</span>
-            <span class="fold-icon">▼</span>
+        <div class="header-layout">
+            <div class="header-main">
+                <span class="method-badge ${methodClass}">${endpoint.method}</span>
+                <span class="card-url" title="${endpoint.url}">${endpoint.url}</span>
+            </div>
+            <div class="header-meta">
+                <span class="chevron-icon">▾</span>
+            </div>
         </div>
     `;
     
-    const content = document.createElement('div');
-    content.className = 'summary-item-content';
-    
-    let innerHTML = '';
+    const body = document.createElement('div');
+    body.className = 'card-body';
     
     // Query Parameters
     const queryParams = extractQueryParams(endpoint.request);
     if (queryParams.length > 0) {
-        innerHTML += `<div class="summary-section-block">
-            <div class="summary-section-title">🔍 Query Parameters</div>
-            <div class="summary-section-body">
-                ${queryParams.map(param => `<div>• <strong>${param.key}</strong>: ${param.value || param.description || '<span class="optional">(optional)</span>'}</div>`).join('')}
-            </div>
-        </div>`;
+        body.appendChild(createInfoBlock('🔍 Query Parameters', createQueryGrid(queryParams), true));
     }
     
     // Request Body
     if (endpoint.request && endpoint.request.body && endpoint.request.body.mode) {
         const bodyContent = formatRequestBody(endpoint.request.body);
         if (bodyContent.trim().length > 0) {
-            innerHTML += `<div class="summary-section-block">
-                <div class="summary-section-title">📦 Request Body</div>
-                <div class="summary-section-body">
-                    <pre class="code-block">${bodyContent}</pre>
-                </div>
-            </div>`;
+            body.appendChild(createInfoBlock('📦 Request Body', createCodeBlock(bodyContent, 'JSON'), true));
         }
     }
     
@@ -549,21 +546,73 @@ function createCollapsibleEndpointSummary(endpoint) {
             try {
                 formattedBody = JSON.stringify(JSON.parse(response.body), null, 2);
             } catch {}
-            
-            innerHTML += `<div class="summary-section-block">
-                <div class="summary-section-title">📥 Response Example</div>
-                <div class="summary-section-body">
-                    <pre class="code-block">${formattedBody}</pre>
-                </div>
-            </div>`;
+            body.appendChild(createInfoBlock('📥 Response Example', createCodeBlock(formattedBody, 'JSON'), true));
         }
     }
     
-    content.innerHTML = innerHTML;
     details.appendChild(summary);
-    details.appendChild(content);
+    details.appendChild(body);
     
     return details;
+}
+
+function createInfoBlock(title, contentElement, showCopy = false) {
+    const block = document.createElement('div');
+    block.className = 'info-block';
+    
+    const header = document.createElement('div');
+    header.className = 'block-header';
+    
+    header.innerHTML = `<span class="block-title">${title}</span>`;
+    
+    if (showCopy) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn-copy-small';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            const textToCopy = contentElement.innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyBtn.textContent = 'Copied!';
+                playSound(successSound);
+                setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+            });
+        };
+        header.appendChild(copyBtn);
+    }
+    
+    const content = document.createElement('div');
+    content.className = 'block-content';
+    content.appendChild(contentElement);
+    
+    block.appendChild(header);
+    block.appendChild(content);
+    return block;
+}
+
+function createQueryGrid(params) {
+    const grid = document.createElement('div');
+    grid.className = 'query-grid';
+    
+    params.forEach(param => {
+        const item = document.createElement('div');
+        item.className = 'query-item';
+        item.innerHTML = `
+            <span class="query-key">${param.key}</span>
+            <span class="query-value">${param.value || param.description || '<span class="optional-hint">(optional)</span>'}</span>
+        `;
+        grid.appendChild(item);
+    });
+    
+    return grid;
+}
+
+function createCodeBlock(code, lang) {
+    const pre = document.createElement('pre');
+    pre.className = 'code-wrapper';
+    pre.setAttribute('data-lang', lang);
+    pre.textContent = code;
+    return pre;
 }
 
 function getSummaryText() {
@@ -647,7 +696,7 @@ function formatRequestBody(body) {
 
 function setAllSummaryItemsOpen(isOpen) {
     playSound(clickSound);
-    const details = summaryContent.querySelectorAll('.summary-item-details');
+    const details = summaryContent.querySelectorAll('.summary-item-card');
     details.forEach(detail => detail.open = isOpen);
 }
 
