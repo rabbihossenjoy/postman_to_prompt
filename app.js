@@ -15,6 +15,7 @@ const apiKeyInput = document.getElementById('apiKey');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
+const refreshBtn = document.getElementById('refreshBtn');
 const soundToggle = document.getElementById('soundToggle');
 const soundIcon = document.getElementById('soundIcon');
 const searchInput = document.getElementById('searchInput');
@@ -55,6 +56,7 @@ function attachEventListeners() {
         if (e.key === 'Enter') handleLogin();
     });
     logoutBtn.addEventListener('click', handleLogout);
+    refreshBtn.addEventListener('click', handleRefresh);
     soundToggle.addEventListener('click', toggleSound);
     searchInput.addEventListener('input', handleSearch);
     backToCollectionsBtn.addEventListener('click', backToCollections);
@@ -136,6 +138,33 @@ function handleLogout() {
         apiKeyInput.value = '';
         collectionsContainer.innerHTML = '';
         updateSelectionUI();
+    }
+}
+
+async function handleRefresh() {
+    playSound(clickSound);
+    refreshBtn.classList.add('loading');
+    refreshBtn.disabled = true;
+    
+    // Rotate animation
+    const icon = refreshBtn.querySelector('span');
+    if (icon) icon.style.transition = 'transform 1s linear';
+    if (icon) icon.style.transform = 'rotate(360deg)';
+    
+    try {
+        await loadCollections();
+        showToast('Collections synced successfully!', 'success');
+    } catch (error) {
+        showToast('Sync failed', 'error');
+    } finally {
+        refreshBtn.classList.remove('loading');
+        refreshBtn.disabled = false;
+        if (icon) {
+            setTimeout(() => {
+                icon.style.transition = 'none';
+                icon.style.transform = 'rotate(0deg)';
+            }, 1000);
+        }
     }
 }
 
@@ -538,16 +567,19 @@ function createCollapsibleEndpointSummary(endpoint) {
         }
     }
     
-    // Response Example
+    // Response Example (Iterate all saved responses)
     if (endpoint.response && endpoint.response.length > 0) {
-        const response = endpoint.response[0];
-        if (response.body) {
-            let formattedBody = response.body;
-            try {
-                formattedBody = JSON.stringify(JSON.parse(response.body), null, 2);
-            } catch {}
-            body.appendChild(createInfoBlock('📥 Response Example', createCodeBlock(formattedBody, 'JSON'), true));
-        }
+        endpoint.response.forEach((response, index) => {
+            if (response.body) {
+                let formattedBody = response.body;
+                try {
+                    formattedBody = JSON.stringify(JSON.parse(response.body), null, 2);
+                } catch {}
+                
+                const title = `📥 Response Example ${endpoint.response.length > 1 ? (index + 1) : ''} (${response.name || 'Success'})`;
+                body.appendChild(createInfoBlock(title, createCodeBlock(formattedBody, 'JSON'), true));
+            }
+        });
     }
     
     details.appendChild(summary);
@@ -639,16 +671,17 @@ function getSummaryText() {
         }
         
         if (endpoint.response && endpoint.response.length > 0) {
-            const response = endpoint.response[0];
-            if (response.body) {
-                text += `📥 Response Example:\n`;
-                try {
-                    text += JSON.stringify(JSON.parse(response.body), null, 2) + '\n';
-                } catch {
-                    text += response.body + '\n';
+            endpoint.response.forEach((response, index) => {
+                if (response.body) {
+                    text += `📥 Response Example ${endpoint.response.length > 1 ? (index + 1) : ''} (${response.name || 'Success'}):\n`;
+                    try {
+                        text += JSON.stringify(JSON.parse(response.body), null, 2) + '\n';
+                    } catch {
+                        text += response.body + '\n';
+                    }
+                    text += '\n';
                 }
-            }
-            text += '\n';
+            });
         }
         text += '═'.repeat(80) + '\n\n';
     });
