@@ -31,6 +31,8 @@ const summarySection = document.getElementById('summarySection');
 const summaryContent = document.getElementById('summaryContent');
 const copyBtn = document.getElementById('copyBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const expandAllBtn = document.getElementById('expandAllBtn');
+const collapseAllBtn = document.getElementById('collapseAllBtn');
 const toast = document.getElementById('toast');
 const clickSound = document.getElementById('clickSound');
 const successSound = document.getElementById('successSound');
@@ -59,6 +61,8 @@ function attachEventListeners() {
     clearSelectionBtn.addEventListener('click', clearAllSelections);
     copyBtn.addEventListener('click', copyToClipboard);
     downloadBtn.addEventListener('click', downloadSummary);
+    expandAllBtn.addEventListener('click', () => setAllSummaryItemsOpen(true));
+    collapseAllBtn.addEventListener('click', () => setAllSummaryItemsOpen(false));
 }
 
 // Sound Effects
@@ -483,68 +487,123 @@ function generateSummary() {
     }
     
     summarySection.style.display = 'block';
-    
-    let summary = '';
+    summaryContent.innerHTML = '';
     
     state.selectedEndpoints.forEach((endpoint, key) => {
-        summary += formatEndpoint(endpoint);
-        summary += '\n' + '═'.repeat(80) + '\n\n';
+        const endpointSummary = createCollapsibleEndpointSummary(endpoint);
+        summaryContent.appendChild(endpointSummary);
     });
-    
-    summaryContent.textContent = summary;
 }
 
-function formatEndpoint(endpoint) {
-    let output = '';
+function createCollapsibleEndpointSummary(endpoint) {
+    const details = document.createElement('details');
+    details.className = 'summary-item-details';
+    details.open = true; // Open by default
     
-    // Formatted Header per user request
-    // ║ ENDPOINT: {{base_url}}/v1/user/send-money/wallet-to-user/info
-    // ║ METHOD: GET
+    const summary = document.createElement('summary');
+    summary.className = 'summary-item-header';
     
-    // We use endpoint.url for the path in the header as requested
-    output += `║ ENDPOINT: ${endpoint.url}\n`;
-    output += `║ METHOD: ${endpoint.method.toUpperCase()}\n\n`;
+    const methodClass = `method-${endpoint.method.toLowerCase()}`;
+    summary.innerHTML = `
+        <div class="summary-header-content">
+            <span class="summary-method ${methodClass}">${endpoint.method}</span>
+            <span class="summary-url">${endpoint.url}</span>
+            <span class="fold-icon">▼</span>
+        </div>
+    `;
     
-    // Only show Body and Params if they exist
-    // No "Header", "Path Variables" unless part of Params logic or user requests specifically.
-    // User said: "okay and show save response no need others info if body and prams show must with field value"
+    const content = document.createElement('div');
+    content.className = 'summary-item-content';
+    
+    let innerHTML = '';
     
     // Query Parameters
     const queryParams = extractQueryParams(endpoint.request);
     if (queryParams.length > 0) {
-        output += `🔍 Query Parameters:\n`;
-        queryParams.forEach(param => {
-            output += `   • ${param.key}: ${param.value || param.description || '(optional)'}\n`;
-        });
-        output += '\n';
+        innerHTML += `<div class="summary-section-block">
+            <div class="summary-section-title">🔍 Query Parameters</div>
+            <div class="summary-section-body">
+                ${queryParams.map(param => `<div>• <strong>${param.key}</strong>: ${param.value || param.description || '<span class="optional">(optional)</span>'}</div>`).join('')}
+            </div>
+        </div>`;
     }
     
     // Request Body
     if (endpoint.request && endpoint.request.body && endpoint.request.body.mode) {
         const bodyContent = formatRequestBody(endpoint.request.body);
         if (bodyContent.trim().length > 0) {
-            output += `� Request Body:\n`;
-            output += bodyContent;
-            output += '\n\n';
+            innerHTML += `<div class="summary-section-block">
+                <div class="summary-section-title">📦 Request Body</div>
+                <div class="summary-section-body">
+                    <pre class="code-block">${bodyContent}</pre>
+                </div>
+            </div>`;
         }
     }
     
     // Response Example
     if (endpoint.response && endpoint.response.length > 0) {
-        output += `📥 Response Example:\n`;
-        const response = endpoint.response[0]; // Taking the first response (usually success)
+        const response = endpoint.response[0];
         if (response.body) {
+            let formattedBody = response.body;
             try {
-                const formatted = JSON.stringify(JSON.parse(response.body), null, 2);
-                output += formatted + '\n';
-            } catch {
-                output += response.body + '\n';
-            }
+                formattedBody = JSON.stringify(JSON.parse(response.body), null, 2);
+            } catch {}
+            
+            innerHTML += `<div class="summary-section-block">
+                <div class="summary-section-title">📥 Response Example</div>
+                <div class="summary-section-body">
+                    <pre class="code-block">${formattedBody}</pre>
+                </div>
+            </div>`;
         }
-        output += '\n';
     }
     
-    return output;
+    content.innerHTML = innerHTML;
+    details.appendChild(summary);
+    details.appendChild(content);
+    
+    return details;
+}
+
+function getSummaryText() {
+    let text = '';
+    state.selectedEndpoints.forEach((endpoint) => {
+        text += `║ ENDPOINT: ${endpoint.url}\n`;
+        text += `║ METHOD: ${endpoint.method.toUpperCase()}\n\n`;
+        
+        const queryParams = extractQueryParams(endpoint.request);
+        if (queryParams.length > 0) {
+            text += `🔍 Query Parameters:\n`;
+            queryParams.forEach(param => {
+                text += `   • ${param.key}: ${param.value || param.description || '(optional)'}\n`;
+            });
+            text += '\n';
+        }
+        
+        if (endpoint.request && endpoint.request.body && endpoint.request.body.mode) {
+            const bodyContent = formatRequestBody(endpoint.request.body);
+            if (bodyContent.trim().length > 0) {
+                text += `📦 Request Body:\n`;
+                text += bodyContent + '\n\n';
+            }
+        }
+        
+        if (endpoint.response && endpoint.response.length > 0) {
+            const response = endpoint.response[0];
+            if (response.body) {
+                text += `📥 Response Example:\n`;
+                try {
+                    text += JSON.stringify(JSON.parse(response.body), null, 2) + '\n';
+                } catch {
+                    text += response.body + '\n';
+                }
+            }
+            text += '\n';
+        }
+        text += '═'.repeat(80) + '\n\n';
+    });
+    return text;
 }
 
 function extractQueryParams(request) {
@@ -586,12 +645,18 @@ function formatRequestBody(body) {
     return output;
 }
 
+function setAllSummaryItemsOpen(isOpen) {
+    playSound(clickSound);
+    const details = summaryContent.querySelectorAll('.summary-item-details');
+    details.forEach(detail => detail.open = isOpen);
+}
+
 // Copy & Download
 async function copyToClipboard() {
     playSound(clickSound);
     
     try {
-        await navigator.clipboard.writeText(summaryContent.textContent);
+        await navigator.clipboard.writeText(getSummaryText());
         playSound(successSound);
         showToast('Copied to clipboard!', 'success');
     } catch (error) {
@@ -602,7 +667,7 @@ async function copyToClipboard() {
 function downloadSummary() {
     playSound(clickSound);
     
-    const blob = new Blob([summaryContent.textContent], { type: 'text/plain' });
+    const blob = new Blob([getSummaryText()], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
