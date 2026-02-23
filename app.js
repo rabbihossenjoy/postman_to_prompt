@@ -407,15 +407,42 @@ function renderFolderTree(collection) {
     }
     
     // Create a root container for consistency, or just append directly
-    collection.item.forEach(item => {
-        const element = createTreeItemElement(item, state.currentCollection.name);
-        folderTreeContainer.appendChild(element);
-    });
+    try {
+        collection.item.forEach(item => {
+            const element = createTreeItemElement(item, state.currentCollection.name);
+            folderTreeContainer.appendChild(element);
+        });
+    } catch (err) {
+        console.error('Error rendering tree:', err);
+        folderTreeContainer.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h4>Error Rendering Collection</h4>
+                <p class="error-log" style="color: var(--danger-color); font-family: monospace;">${escapeHtml(err.message)}</p>
+                <details style="margin-top: 10px; text-align: left; background: var(--border-color); padding: 10px; border-radius: 4px;">
+                    <summary style="cursor: pointer; font-weight: bold;">Show Details</summary>
+                    <pre style="margin-top: 10px; white-space: pre-wrap; word-break: break-all; font-size: 12px; font-family: monospace;">${escapeHtml(err.stack || '')}</pre>
+                </details>
+                <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="retryCollectionLoad()">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
 }
 
 function createTreeItemElement(item, collectionName, parentId = '') {
     const isFolder = item.item && item.item.length > 0;
-    const uniqueId = parentId ? `${parentId}-${item.name.replace(/\s+/g, '_')}` : item.name.replace(/\s+/g, '_');
+    const safeName = item.name ? item.name.replace(/[^a-zA-Z0-9_-]/g, '_') : 'unnamed';
+    const uniqueId = parentId ? `${parentId}-${safeName}` : safeName;
     
     if (isFolder) {
         return createFolderElement(item, collectionName, uniqueId);
@@ -436,7 +463,7 @@ function createFolderElement(item, collectionName, uniqueId) {
         <div class="folder-header">
             <input type="checkbox" class="folder-checkbox" id="folder-check-${uniqueId}">
             <span class="folder-icon">▶</span>
-            <span class="folder-name">${item.name}</span>
+            <span class="folder-name">${escapeHtml(item.name)}</span>
             <span class="folder-count">${endpointCount}</span>
         </div>
         <div class="folder-children" id="folder-children-${uniqueId}">
@@ -485,8 +512,8 @@ function createEndpointElement(item, collectionName, uniqueId) {
     div.className = 'endpoint-item';
     div.innerHTML = `
         <input type="checkbox" class="endpoint-checkbox" id="endpoint-${uniqueId}" ${isChecked ? 'checked' : ''}>
-        <span class="endpoint-method method-${endpoint.method.toLowerCase()}">${endpoint.method}</span>
-        <span class="endpoint-path">${endpoint.path}</span>
+        <span class="endpoint-method method-${escapeHtml(endpoint.method).toLowerCase()}">${escapeHtml(endpoint.method)}</span>
+        <span class="endpoint-path">${escapeHtml(endpoint.path)}</span>
         ${hasResponse ? '<span class="response-badge" title="Has saved response">💾</span>' : ''}
     `;
     
