@@ -1214,3 +1214,123 @@ body::before {
     text-align: left;
     word-break: break-all;
 }
+
+/* --- Try It Out Section --- */
+.try-it-container {
+    margin-top: 1.5rem;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 1.5rem;
+    background: rgba(10, 14, 39, 0.4);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.try-it-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.try-it-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.try-it-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.try-it-input,
+.try-it-textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.try-it-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.try-it-input:focus,
+.try-it-textarea:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.try-it-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.try-it-btn {
+    padding: 0.75rem 1.75rem;
+    font-size: 0.95rem;
+    background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+}
+
+.try-it-btn:hover {
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.try-it-response-container {
+    margin-top: 1.5rem;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #0f172a;
+    border: 1px solid var(--border-color);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.try-it-response-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+.try-it-response-header.success {
+    background: rgba(16, 185, 129, 0.2);
+    border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.try-it-response-header.error {
+    background: rgba(239, 68, 68, 0.2);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.try-it-response-body {
+    padding: 1.25rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.try-it-response-body .code-wrapper {
+    margin: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.try-it-response-body .error-text {
+    color: var(--error);
+    margin: 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+}

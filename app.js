@@ -704,6 +704,9 @@ function createCollapsibleEndpointSummary(endpoint) {
         });
     }
     
+    // Try It Out Block
+    body.appendChild(createTryItBlock(endpoint));
+    
     details.appendChild(summary);
     details.appendChild(body);
     
@@ -847,6 +850,187 @@ function formatRequestBody(body) {
     }
     
     return output;
+}
+
+function createTryItBlock(endpoint) {
+    const block = document.createElement('div');
+    block.className = 'info-block try-it-container';
+    
+    const header = document.createElement('div');
+    header.className = 'block-header';
+    header.innerHTML = `<span class="block-title">🚀 Try it Out</span>`;
+    
+    const content = document.createElement('div');
+    content.className = 'block-content try-it-content';
+    
+    // URL input
+    const urlGroup = document.createElement('div');
+    urlGroup.className = 'try-it-group';
+    let defaultUrl = endpoint.url;
+    urlGroup.innerHTML = `
+        <label>URL</label>
+        <input type="text" class="try-it-input try-it-url" value="${escapeHtml(defaultUrl)}">
+    `;
+    content.appendChild(urlGroup);
+    
+    // Request Headers
+    const headersGroup = document.createElement('div');
+    headersGroup.className = 'try-it-group';
+    let headersContent = '';
+    if (endpoint.request && endpoint.request.header && endpoint.request.header.length > 0) {
+        endpoint.request.header.forEach(h => {
+             headersContent += `${h.key}: ${h.value}\n`;
+        });
+    }
+    if (!headersContent.includes('Content-Type') && endpoint.method !== 'GET' && endpoint.method !== 'DELETE') {
+        headersContent += 'Content-Type: application/json\n';
+    }
+    
+    headersGroup.innerHTML = `
+        <label>Headers (one per line, format: Key: Value)</label>
+        <textarea class="try-it-textarea try-it-headers" rows="3" placeholder="Content-Type: application/json">${escapeHtml(headersContent.trim())}</textarea>
+    `;
+    content.appendChild(headersGroup);
+    
+    // Request Body (if not GET)
+    let bodyInput = null;
+    if (endpoint.method !== 'GET') {
+        const bodyGroup = document.createElement('div');
+        bodyGroup.className = 'try-it-group';
+        let defaultBody = '';
+        if (endpoint.request && endpoint.request.body && endpoint.request.body.mode) {
+           defaultBody = formatRequestBody(endpoint.request.body).trim();
+        }
+        bodyGroup.innerHTML = `
+            <label>Request Body</label>
+            <textarea class="try-it-textarea try-it-body" rows="5" placeholder="{ }">${escapeHtml(defaultBody)}</textarea>
+        `;
+        content.appendChild(bodyGroup);
+        bodyInput = bodyGroup.querySelector('.try-it-body');
+    }
+    
+    // Action Buttons
+    const actionGroup = document.createElement('div');
+    actionGroup.className = 'try-it-actions';
+    
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'btn btn-primary try-it-btn';
+    sendBtn.innerHTML = `<span class="btn-text">Send Request</span><span class="btn-loader"></span>`;
+    
+    actionGroup.appendChild(sendBtn);
+    content.appendChild(actionGroup);
+    
+    // Response Container
+    const responseContainer = document.createElement('div');
+    responseContainer.className = 'try-it-response-container';
+    responseContainer.style.display = 'none';
+    content.appendChild(responseContainer);
+    
+    block.appendChild(header);
+    block.appendChild(content);
+    
+    // Event Listener for Send Request
+    sendBtn.addEventListener('click', async () => {
+        playSound(clickSound);
+        sendBtn.classList.add('loading');
+        sendBtn.disabled = true;
+        responseContainer.style.display = 'none';
+        
+        try {
+            let urlInput = content.querySelector('.try-it-url').value.trim();
+            
+            // Postman variables replacement (crude UI helper)
+            // Replace {{variable}} with nothing if it's there so browser doesn't throw invalid URL
+            // Or leave to user to fix it if they want
+            // Let's replace {{variable}} to prompt user but allow fetch to try
+            
+            const headersInput = content.querySelector('.try-it-headers').value;
+            const headers = {};
+            if (headersInput) {
+                headersInput.split('\n').forEach(line => {
+                    const idx = line.indexOf(':');
+                    if (idx > 0) {
+                        const key = line.substring(0, idx).trim();
+                        const val = line.substring(idx + 1).trim();
+                        headers[key] = val;
+                    }
+                });
+            }
+            
+            const fetchOptions = {
+                method: endpoint.method,
+                headers: headers
+            };
+            
+            if (bodyInput && bodyInput.value) {
+                fetchOptions.body = bodyInput.value;
+            }
+            
+            const startTime = performance.now();
+            let response;
+            let fetchError = null;
+            
+            try {
+                response = await fetch(urlInput, fetchOptions);
+            } catch (err) {
+                fetchError = err;
+            }
+            
+            const endTime = performance.now();
+            const timeTaken = Math.round(endTime - startTime);
+            
+            responseContainer.style.display = 'block';
+            
+            if (fetchError) {
+                responseContainer.innerHTML = `
+                    <div class="try-it-response-header error">
+                        <span class="status-code">ERROR</span>
+                        <span class="time-taken">${timeTaken}ms</span>
+                    </div>
+                    <div class="try-it-response-body">
+                        <pre class="error-text">${escapeHtml(fetchError.message || 'Network Error or CORS issue')}</pre>
+                    </div>
+                `;
+            } else {
+                let responseText = '';
+                try {
+                    responseText = await response.text();
+                } catch(e) {}
+                
+                let isJson = false;
+                let formattedResponse = responseText;
+                
+                try {
+                    const parsed = JSON.parse(responseText);
+                    formattedResponse = JSON.stringify(parsed, null, 2);
+                    isJson = true;
+                } catch {
+                    // Not JSON
+                }
+                
+                const statusClass = response.ok ? 'success' : 'error';
+                
+                responseContainer.innerHTML = `
+                    <div class="try-it-response-header ${statusClass}">
+                        <span class="status-code">Status: ${response.status} ${response.statusText}</span>
+                        <span class="time-taken">Time: ${timeTaken}ms</span>
+                    </div>
+                    <div class="try-it-response-body">
+                        <pre class="code-wrapper" data-lang="${isJson ? 'JSON' : 'TEXT'}">${escapeHtml(formattedResponse)}</pre>
+                    </div>
+                `;
+            }
+            
+        } catch (globalErr) {
+            showToast('Request failed', 'error');
+            console.error(globalErr);
+        } finally {
+            sendBtn.classList.remove('loading');
+            sendBtn.disabled = false;
+        }
+    });
+    
+    return block;
 }
 
 function setAllSummaryItemsOpen(isOpen) {
