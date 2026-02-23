@@ -65,6 +65,58 @@ function attachEventListeners() {
     downloadBtn.addEventListener('click', downloadSummary);
     expandAllBtn.addEventListener('click', () => setAllSummaryItemsOpen(true));
     collapseAllBtn.addEventListener('click', () => setAllSummaryItemsOpen(false));
+    
+    window.addEventListener('hashchange', handleHashChange);
+}
+
+async function handleHashChange() {
+    const hash = window.location.hash.replace('#', '');
+    if (hash.startsWith('collection/')) {
+        const uid = hash.substring('collection/'.length);
+        await openCollectionByUid(uid);
+    } else {
+        closeCollectionDetail();
+    }
+}
+
+async function openCollectionByUid(uid) {
+    if (!state.apiKey) return;
+
+    let collection = state.collections.find(c => c.uid === uid);
+    
+    if (!collection) {
+        // Show loading state while fetching individual collection
+        collectionsSection.style.display = 'none';
+        collectionDetailSection.style.display = 'block';
+        detailCollectionName.textContent = 'Loading Collection...';
+        detailCollectionDesc.textContent = 'Please wait';
+        folderTreeContainer.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+
+        const details = await loadCollectionDetails(uid);
+        collection = { 
+            uid, 
+            name: details?.info?.name || 'Shared Collection', 
+            description: details?.info?.description || '', 
+            details 
+        };
+        // Temporarily add to state if needed, or just show it
+        if (!details.error) {
+            state.collections.push(collection);
+        }
+    }
+    
+    if (collection) {
+        showCollectionDetail(collection, false);
+    }
+}
+
+async function retryCollectionLoad() {
+    if (state.currentCollection && state.currentCollection.uid) {
+        folderTreeContainer.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+        const details = await loadCollectionDetails(state.currentCollection.uid);
+        state.currentCollection.details = details;
+        renderFolderTree(details);
+    }
 }
 
 // Sound Effects
@@ -211,6 +263,10 @@ async function loadCollections() {
         }));
         
         renderCollections();
+        
+        if (window.location.hash.startsWith('#collection/')) {
+            handleHashChange();
+        }
     } catch (error) {
         showToast('Failed to load collections', 'error');
     }
@@ -224,12 +280,16 @@ async function loadCollectionDetails(collectionId) {
             }
         });
         
-        if (!response.ok) throw new Error('Failed to fetch collection details');
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `HTTP Error ${response.status}`);
+        }
         
         const data = await response.json();
         return data.collection;
     } catch (error) {
-        return null;
+        console.error('Error loading collection details:', error);
+        return { error: error.message };
     }
 }
 
@@ -267,7 +327,7 @@ function createCollectionCard(collection) {
 }
 
 function countEndpoints(collection) {
-    if (!collection) return 0;
+    if (!collection || collection.error) return 0;
     let count = 0;
     
     function traverse(items) {
@@ -283,7 +343,12 @@ function countEndpoints(collection) {
 }
 
 // Collection Detail View
-function showCollectionDetail(collection) {
+function showCollectionDetail(collection, updateHash = true) {
+    if (updateHash) {
+        window.location.hash = `collection/${collection.uid}`;
+        return;
+    }
+
     state.currentCollection = collection;
     
     // Hide collections, show detail
@@ -298,18 +363,48 @@ function showCollectionDetail(collection) {
     renderFolderTree(collection.details);
 }
 
-function backToCollections() {
-    playSound(clickSound);
+function closeCollectionDetail() {
     state.currentCollection = null;
     
     collectionsSection.style.display = 'block';
     collectionDetailSection.style.display = 'none';
 }
 
+function backToCollections() {
+    playSound(clickSound);
+    window.location.hash = ''; // This will trigger hashchange and close detail view
+}
+
 function renderFolderTree(collection) {
     folderTreeContainer.innerHTML = '';
     
-    if (!collection || !collection.item) return;
+    if (!collection) {
+        folderTreeContainer.innerHTML = '<div class="error-message show">Failed to load collection details.</div>';
+        return;
+    }
+    
+    if (collection.error) {
+        folderTreeContainer.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h4>Error Loading Collection</h4>
+                <p class="error-log">${collection.error}</p>
+                <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="retryCollectionLoad()">Retry</button>
+            </div>
+        `;
+        return;
+    }
+    
+    if (!collection.item || collection.item.length === 0) {
+        folderTreeContainer.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <h4>No endpoints found</h4>
+                <p>This collection has no requests or folders.</p>
+            </div>
+        `;
+        return;
+    }
     
     // Create a root container for consistency, or just append directly
     collection.item.forEach(item => {

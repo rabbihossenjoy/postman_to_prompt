@@ -1178,3 +1178,39 @@ body::before {
     font-size: 1rem;
     color: var(--text-secondary);
 }
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: var(--bg-card);
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    margin-top: 1rem;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+}
+
+.error-log {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error) !important;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+    text-align: left;
+    word-break: break-all;
+}
